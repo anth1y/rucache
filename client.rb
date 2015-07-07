@@ -5,15 +5,30 @@ require 'socket'
 
 class Client
   def initialize
-    @sock = Socket.new(:UNIX, :DGRAM)
-    sock_srv = Socket.sockaddr_un('rucache.sock')
-    @sock.connect(sock_srv)
+    restart_socket
+  end
+
+  def restart_socket
+    addr = Socket.sockaddr_un('rucache.sock')
+    @sock_send = Socket.new(:UNIX, :DGRAM)
+    @sock_send.connect(addr)
+
+    addr2 = Socket.sockaddr_un('rucache2.sock')
+    @sock_recv = Socket.new(:UNIX, :DGRAM)
+    @sock_recv.bind(addr2)
   end
 
 
   def console
     while line = Readline.readline('> ',true)
       p line
+      begin
+        @sock_send.send(line, 0)
+      p  @sock_recv.recv(255)
+      rescue Errno::ECONNREFUSED => e
+        restart_socket
+        retry
+      end
     end
   end
 end

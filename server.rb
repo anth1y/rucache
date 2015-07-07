@@ -16,21 +16,38 @@ class Server
   # method to start the server
   # method to listen for messages on what
   #
+  attr_reader :sock
   def initialize
-    @sock = Socket.new(:UNIX, :DGRAM)
-    addr = Socket.sockaddr_un('rucache.sock')
-    @sock.bind(addr)
+    init_listen
+
     @store = Storage.new
+  end
+
+  def init_listen
+    addr = Socket.sockaddr_un('rucache.sock')
+    @sock_recv = Socket.new(:UNIX, :DGRAM)
+    @sock_recv.bind(addr)
+
+  end
+
+  def init_send
+    return if @sock_send
+    addr2 = Socket.sockaddr_un('rucache2.sock')
+    @sock_send = Socket.new(:UNIX, :DGRAM)
+    @sock_send.connect(addr2)
   end
 
   def start
     loop do
-      message @sock.recv(5)
+      message @sock_recv.recv(255)
     end
   end
 
   def message(command)
-    @store.send *command.split("\t")
+    result = @store.send *command.split(" ")
+    p result
+    init_send
+    @sock_send.send(result, 0)
   end
 end
 
